@@ -11,24 +11,24 @@ The project includes:
 
 ## Getting Started
 
-### 🔹 Prerequisites
+### Prerequisites
 Ensure you have the following installed:
 - Python **>=3.8**
 - Pip **(latest version recommended)**
 - ONNXRuntime
 
-### 🔹 Clone the Repository
+### Clone the Repository
 ```bash
 git clone https://github.com/mohanasrujana/clothing-attribute-recognizer.git
 cd clothing-attribute-recognizer
 ```
 
-### 🔹 Install Dependencies
+### Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 🔹 Download Dataset Labels
+### Download Dataset Labels
 The [**DeepFashion dataset**](https://mmlab.ie.cuhk.edu.hk/projects/DeepFashion.html) contains clothing labels that the model uses for classification.
 
 Download the label files and place them in the `dataset/` folder:
@@ -36,7 +36,7 @@ Download the label files and place them in the `dataset/` folder:
 - **Clothing attributes:** `list_attr_cloth.txt`
 - **img:** `img` folder
 
-### 🔹 Run Model Export (Convert PyTorch to ONNX)
+### Run Model Export (Convert PyTorch to ONNX)
 ```bash
 python scripts/export_to_onnx.py
 ```
@@ -116,50 +116,49 @@ The original fully connected layer of ResNet-18 is replaced with two linear laye
 
 ### 2. **Exporting to ONNX Format**
 
-The PyTorch model is exported to ONNX using the `torch.onnx.export()` function, ensuring compatibility with ONNXRuntime.
+The PyTorch model is exported to ONNX using the `torch.onnx.export()` function, ensuring compatibility with ONNXRuntime which can be viewed in `scripts/export_to_onnx.py`.
 
 #### **Export Steps:**
 
-1. **Initialize the modified ResNet-18 model** with dual output heads for category and attribute predictions.
+## Steps to Export the ONNX Model
 
-2. **Set the model to evaluation mode** to ensure layers like dropout or batch normalization behave correctly during export.
+Exporting the ONNX model involved the following key steps:
 
-3. **Create a dummy input tensor** representing an image (shape: `(1, 3, 224, 224)`) to define the model input format.
+1. **Initialize the modified ResNet-18 model** with two output heads:
+   - **Category Head** → Predicts the clothing type (50 classes).
+   - **Attribute Head** → Predicts multiple clothing attributes (1000 attributes like color, material, etc.).
 
-4. **Export the model** to ONNX using `torch.onnx.export()` with key parameters:
-   - `export_params=True` → Includes model weights in the export.
-   - `opset_version=11` → Ensures compatibility with ONNXRuntime.
-   - `do_constant_folding=True` → Optimizes constant nodes for inference.
-   - `input_names` & `output_names` → Clearly label the model’s input and outputs.
-   - `dynamic_axes` → Enables variable batch sizes during inference.
+2. **Set the model to evaluation mode** to ensure consistent behavior during export, especially for layers like dropout and batch normalization.
 
-The exported model is saved as **`resnet_clothing_with_attributes.onnx`**.
+3. **Create a dummy input tensor** representing an image with shape `(1, 3, 224, 224)` to define the model's input format.
 
----
+4. **Export the model to ONNX format** using the following code:
 
-### 3. **Testing the ONNX Model**
+```python
+import torch
 
-Post-export, the ONNX model is tested using **ONNXRuntime** to ensure it functions as expected:
+torch.onnx.export(
+    model,  # The modified ResNet-18 model
+    torch.randn(1, 3, 224, 224),  # Dummy input
+    "resnet_clothing_with_attributes.onnx",  # Output file name
+    export_params=True,  # Store trained weights
+    opset_version=11,  # ONNX version
+    do_constant_folding=True,  # Optimize constants
+    input_names=["input"],  # Name of model input
+    output_names=["category_output", "attribute_output"],  # Names of model outputs
+    dynamic_axes={"input": {0: "batch_size"}, "category_output": {0: "batch_size"}, "attribute_output": {0: "batch_size"}}  # Allow variable batch sizes
+)
+```
 
-- A **preprocessing pipeline** resizes, crops, and normalizes the test image to match the input format.
-- The image is passed through the ONNX model to generate:
-  - **Category logits** → Interpreted using softmax for classification.
-  - **Attribute logits** → Processed using sigmoid for multi-label predictions.
-- The resulting probabilities help verify the model's predictions.
+The resulting ONNX model will be saved as **`resnet_clothing_with_attributes.onnx`**.
 
----
+This process ensures the model is ready for optimized and scalable deployment using ONNXRuntime.
 
-### **Benefits of Exporting to ONNX**
 
-- **Framework Interoperability** — Use the model across multiple frameworks (PyTorch, TensorFlow, etc.).
-- **Optimized Inference** — Faster, lightweight, and efficient with ONNXRuntime.
-- **Scalability** — Easily deployable on cloud services, mobile devices, or edge platforms.
 
-This export process ensures the model is ready for efficient and flexible deployment while maintaining accuracy and speed.
+## Running Inference
 
-## 4️⃣ Running Inference
-
-### 🔹 CLI Usage
+### CLI Usage
 
 CLI help
 
@@ -173,7 +172,7 @@ python -m api.cli predict --input_dataset /Users/satyasrujanapilli/Downloads/clo
 ```
 ![](screenshots/api_output.png)
 
-### 🔹 Running ONNX Inference Directly for a single image
+### Running ONNX Inference Directly for a single image
 Replace your image_path variable with the image location of your choice in `scripts/run_onnx_inference.py` and then run
 ```bash
 python scripts/run_onnx_inference.py
@@ -181,7 +180,7 @@ python scripts/run_onnx_inference.py
 the below output is for the existing image location in  `scripts/run_onnx_inference.py` file
 ![](screenshots/inference_output.png)
 
-### 🔹 API Usage
+### API Usage
 Start the Flask-ML API server:
 ```bash
 python api/server.py
@@ -235,14 +234,14 @@ curl -X POST "http://127.0.0.1:5000/predict" \
 
 ---
 
-## 5️⃣ About the Model & Dataset
+## About the Model & Dataset
 
-### 🔹 ResNet-18
+### ResNet-18
 [ResNet-18](https://pytorch.org/vision/main/models/generated/torchvision.models.resnet18.html) is a **deep residual network** designed for image classification.
 - **Pretrained on ImageNet** for strong feature extraction.
 - **Modified with two output heads** for clothing classification.
 
-### 🔹 DeepFashion Dataset
+### DeepFashion Dataset
 [DeepFashion](https://mmlab.ie.cuhk.edu.hk/projects/DeepFashion.html) is a large-scale dataset containing:
 - **200,000+ labeled images** of clothing.
 - **50 clothing categories** (e.g., T-shirts, dresses, jeans).
@@ -258,13 +257,13 @@ dataset/
 
 ---
 
-## 6️⃣ Future Enhancements
+## Future Enhancements
 
-✅ **Increase the prediction accuracy** 
+1. **Increase the prediction accuracy** 
 
-✅ **Additional Attributes** like Sleeve length, fit type, etc.
+2. **Additional Attributes** like Sleeve length, fit type, etc.
 
-✅ **ONNX Quantization**: Optimize model for faster inference.
+3. **ONNX Quantization**: Optimize model for faster inference.
 
 ---
 
